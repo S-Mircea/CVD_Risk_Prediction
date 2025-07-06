@@ -1,9 +1,7 @@
-import os
 from flask import Flask, render_template, request, jsonify
 import pandas as pd
 from ml_model import CVDRiskModel
-from llm_advisor import CVDLlamaAdvisor
-import traceback
+import os
 
 app = Flask(__name__)
 
@@ -12,20 +10,6 @@ model = CVDRiskModel()
 if not model.load_model():
     print("Warning: Model not found. Please train the model first.")
 
-# Initialize LLM advisor if available
-try:
-    llm_advisor = CVDLlamaAdvisor()
-    LLM_AVAILABLE = True
-    ollama_status = llm_advisor.check_ollama_availability()
-    if ollama_status:
-        print("✓ Ollama LLM advisor connected successfully")
-    else:
-        print("⚠ Ollama not available - using fallback advice system")
-except Exception as e:
-    print(f"⚠ LLM advisor initialization failed: {e}")
-    LLM_AVAILABLE = False
-    ollama_status = False
-
 @app.route('/')
 def index():
     return render_template('index.html')
@@ -33,6 +17,7 @@ def index():
 @app.route('/assess_risk', methods=['POST'])
 def assess_risk():
     try:
+        # Get form data
         user_data = {
             'Age': int(request.form['age']),
             'Gender': request.form['gender'],
@@ -51,9 +36,8 @@ def assess_risk():
             'Borough': request.form['borough']
         }
         
-        script_dir = os.path.dirname(os.path.realpath(__file__))
-        env_data_path = os.path.join(script_dir, '..', 'environmental_data', 'expanded_environmental_data.csv')
-        env_data = pd.read_csv(env_data_path)
+        # Load environmental data for the borough
+        env_data = pd.read_csv('../environmental_data/expanded_environmental_data.csv')
         borough_env = env_data[env_data['Borough'] == user_data['Borough']]
         
         if not borough_env.empty:
@@ -71,32 +55,22 @@ def assess_risk():
             user_data['WalkabilityScore'] = env_data['WalkabilityScore'].mean()
             user_data['UrbanHeatIncrease'] = env_data['UrbanHeatIncrease'].mean()
         
+        # Make prediction
         result = model.predict_risk(user_data)
+        
+        # Add environmental data to result
         result['environmental_data'] = {
             'pm25': user_data['Avg_PM25'],
             'no2': user_data['Avg_NO2'],
             'borough': user_data['Borough']
         }
+        
+        # Add recommendations
         result['recommendations'] = get_recommendations(result['risk_level'])
         
-        # Generate LLM-powered environmental advice
-        if LLM_AVAILABLE and ollama_status:
-            try:
-                advice = llm_advisor.get_environmental_advice(
-                    result['risk_level'], result['environmental_data'], user_data
-                )
-                print("Llama advice:", advice)
-                result['llm_advice'] = advice
-                result['llm_available'] = True
-            except Exception as e:
-                print("Llama error:", e)
-                traceback.print_exc()
-                advice = "Sorry, no advice available at this time."
-                result['llm_advice'] = advice
-                result['llm_available'] = False
-        else:
-            result['llm_advice'] = None
-            result['llm_available'] = False
+        # Add simple fallback advice instead of LLM
+        result['llm_advice'] = get_simple_advice(result['risk_level'], user_data['Borough'])
+        result['llm_available'] = False  # Using fallback
         
         return jsonify({
             'success': True,
@@ -104,8 +78,6 @@ def assess_risk():
         })
         
     except Exception as e:
-        print("Error in assess_risk:", e)
-        traceback.print_exc()
         return jsonify({
             'success': False,
             'error': str(e)
@@ -136,38 +108,32 @@ def get_recommendations(risk_level):
     }
     return recommendations.get(risk_level, ["Consult with healthcare provider"])
 
-@app.route('/llm-status', methods=['GET'])
-def llm_status():
-    if not LLM_AVAILABLE:
-        return jsonify({
-            'success': True,
-            'status': {
-                'model_name': 'Not Available',
-                'available': False,
-                'ollama_running': False
-            }
-        })
-    try:
-        model_info = llm_advisor.get_model_info()
-        return jsonify({
-            'success': True,
-            'status': model_info
-        })
-    except Exception as e:
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        }), 500
+def get_simple_advice(risk_level, borough):
+    """Simple environmental advice without LLM"""
+    borough_tips = {
+        'Tower Hamlets': "High pollution area - exercise in Mile End Park, avoid busy roads during peak hours",
+        'Camden': "Urban environment - use Regent's Park for exercise, check air quality before outdoor activities",
+        'Westminster': "Very high traffic pollution - exercise early morning in St James's Park when air is cleaner",
+        'Hackney': "Above-average pollution - use Victoria Park for outdoor activities, avoid main roads",
+        'Richmond upon Thames': "Excellent air quality - take advantage of Richmond Park and riverside walks",
+        'Kingston upon Thames': "Good air quality - riverside location ideal for outdoor exercise",
+    }
+    
+    risk_advice = {
+        'Low Risk': "Maintain your healthy lifestyle while being mindful of air quality.",
+        'Moderate Risk': "Increase outdoor exercise in green spaces while monitoring air pollution levels.",
+        'High Risk': "Prioritize indoor exercise on high pollution days and consult your healthcare provider."
+    }
+    
+    borough_tip = borough_tips.get(borough, f"Monitor air quality in {borough} and exercise in local green spaces when possible")
+    risk_tip = risk_advice.get(risk_level, "Consult with healthcare provider for personalized advice")
+    
+    return f"{risk_tip} {borough_tip}"
 
 if __name__ == '__main__':
-    print("Starting CVD Risk Assessment application...")
+    print("Starting Simple CVD Risk Assessment application...")
     print("Server will be available at:")
-    print("- http://127.0.0.1:5002")
-    print("- http://localhost:5002")
+    print("- http://127.0.0.1:8000")
+    print("- http://localhost:8000")
     print("Press Ctrl+C to stop the server")
-    try:
-        app.run(debug=True, host='127.0.0.1', port=5002)
-    except Exception as e:
-        print(f"Error starting server: {e}")
-        print("Trying alternative configuration...")
-        app.run(debug=False, host='localhost', port=5002)
+    app.run(debug=False, host='127.0.0.1', port=8000)

@@ -275,6 +275,58 @@
             color: #2c3e50;
         }
         
+        /* LLM Advice Styles */
+        .llm-advice {
+            background: linear-gradient(135deg, #fff7ed 0%, #fed7aa 100%);
+            border-left: 4px solid #f59e0b;
+            padding: 20px;
+            margin-top: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(245, 158, 11, 0.1);
+        }
+        
+        .llm-advice h4 {
+            color: #92400e;
+            margin: 0 0 15px 0;
+            font-size: 1.1em;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .llm-advice p {
+            margin: 0;
+            color: #451a03;
+            line-height: 1.6;
+            font-size: 14px;
+        }
+        
+        .llm-status {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 500;
+            margin-left: 10px;
+        }
+        
+        .llm-status.connected {
+            background: #dcfce7;
+            color: #166534;
+        }
+        
+        .llm-status.fallback {
+            background: #fef3c7;
+            color: #92400e;
+        }
+        
+        .llm-loading {
+            color: #6b7280;
+            font-style: italic;
+            padding: 10px;
+        }
+        
         /* Loading spinner styles */
         .loading-spinner {
             display: none;
@@ -699,6 +751,9 @@
             
             // Show feature importance section
             document.getElementById('feature-importance').style.display = 'block';
+            
+            // Display LLM advice if available
+            displayLLMAdvice(result);
         }
         
         function updateFeatureBars() {
@@ -731,6 +786,36 @@
             }, 100);
         }
         
+        function displayLLMAdvice(result) {
+            // Remove any existing LLM advice
+            const existingAdvice = document.querySelector('.llm-advice');
+            if (existingAdvice) {
+                existingAdvice.remove();
+            }
+            
+            if (result.llm_advice) {
+                const adviceDiv = document.createElement('div');
+                adviceDiv.className = 'llm-advice';
+                
+                const statusClass = result.llm_available ? 'connected' : 'fallback';
+                const statusText = result.llm_available ? 'Llama AI' : 'Fallback';
+                
+                adviceDiv.innerHTML = `
+                    <h4>
+                        🦙 Personalized Environmental Advice 
+                        <span class="llm-status ${statusClass}">${statusText}</span>
+                    </h4>
+                    <p>${result.llm_advice}</p>
+                `;
+                
+                // Add after environmental info
+                const envInfo = document.getElementById('environmental-info');
+                if (envInfo.parentNode) {
+                    envInfo.parentNode.insertBefore(adviceDiv, envInfo.nextSibling);
+                }
+            }
+        }
+        
         function clearForm() {
             document.getElementById('assessmentForm').reset();
             document.getElementById('feature-importance').style.display = 'none';
@@ -739,7 +824,32 @@
             document.getElementById('risk-label').textContent = 'Enter patient data to calculate';
             document.getElementById('risk-description').textContent = 'Complete the form on the left to get a 10-year cardiovascular disease risk assessment with environmental factors.';
             document.getElementById('heart-shape').className = 'heart-shape';
+            
+            // Remove LLM advice
+            const existingAdvice = document.querySelector('.llm-advice');
+            if (existingAdvice) {
+                existingAdvice.remove();
+            }
         }
+        
+        // Check LLM status on page load
+        async function checkLLMStatus() {
+            try {
+                const response = await fetch('/llm-status');
+                const data = await response.json();
+                
+                if (data.success && data.status.ollama_running) {
+                    console.log('✓ Ollama LLM is available:', data.status.model_name);
+                } else {
+                    console.log('⚠ Ollama LLM not available - using fallback advice');
+                }
+            } catch (error) {
+                console.log('⚠ Could not check LLM status');
+            }
+        }
+        
+        // Check LLM status when page loads
+        document.addEventListener('DOMContentLoaded', checkLLMStatus);
     </script>
 </body>
 </html>

@@ -3,10 +3,6 @@ import sys
 import argparse
 from train_model import main as train_model
 from web_app import app
-import tkinter as tk
-from tkinter import ttk, messagebox
-import pandas as pd
-from ml_model import CVDRiskModel
 
 def main():
     parser = argparse.ArgumentParser(description='CVD Risk Assessment Web Application')
