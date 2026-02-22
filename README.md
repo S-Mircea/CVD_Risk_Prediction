@@ -1,21 +1,21 @@
-# 🫀 CVD Risk Prediction App
+# CVD Risk Prediction App
 
 A machine learning-powered cardiovascular disease risk assessment application that integrates personal health data with London-specific environmental factors.
 
-## 🎯 Project Overview
+## Project Overview
 
 This application addresses the limitations of traditional CVD risk calculators (Framingham, QRISK) by leveraging machine learning to provide more personalized and accurate risk assessments. Unlike conventional methods, our app integrates environmental data specific to London boroughs, making it particularly relevant for UK populations.
 
 ### Key Features
 
-- **🤖 Advanced ML Prediction**: Random Forest classifier with 93% cross-validation accuracy
-- **🌍 Environmental Integration**: London borough-specific air quality and environmental risk factors
-- **💻 Modern Web Interface**: Professional medical-grade UI with animated visualizations
-- **📊 Real-time Risk Assessment**: Instant CVD risk calculation with probability scores
-- **🎨 Interactive Visualization**: Animated heart that changes color based on risk level
-- **📈 Feature Importance**: Visual breakdown of key risk factors
+- **Advanced ML Prediction**: Random Forest classifier with 93% cross-validation accuracy
+- **Environmental Integration**: London borough-specific air quality and environmental risk factors
+- **Modern Web Interface**: Professional medical-grade UI with animated visualizations
+- **Real-time Risk Assessment**: Instant CVD risk calculation with probability scores
+- **Interactive Visualization**: Animated heart that changes color based on risk level
+- **Feature Importance**: Visual breakdown of key risk factors
 
-## 🏗️ Technology Stack
+## Technology Stack
 
 - **Backend**: Python, Flask
 - **Machine Learning**: scikit-learn, pandas, numpy
@@ -23,7 +23,7 @@ This application addresses the limitations of traditional CVD risk calculators (
 - **Data Processing**: Custom preprocessing pipeline
 - **Model**: Random Forest Classifier (200 estimators)
 
-## 📊 Model Performance
+## Model Performance
 
 - **Cross-Validation Accuracy**: 93.0% (±3.8%)
 - **Precision**: 99% for CVD risk prediction
@@ -31,7 +31,7 @@ This application addresses the limitations of traditional CVD risk calculators (
 - **Training Data**: 1,000 synthetic patient records
 - **Features**: 21 total (15 health + 6 environmental)
 
-## 🚀 Installation & Setup
+## Installation & Setup
 
 ### Prerequisites
 
@@ -61,7 +61,7 @@ This application addresses the limitations of traditional CVD risk calculators (
    - Open your browser and navigate to `http://127.0.0.1:5002`
    - The application will be ready to use!
 
-## 📝 Usage Guide
+## Usage Guide
 
 ### Patient Data Input
 
@@ -102,7 +102,7 @@ After submitting the form, the application provides:
 4. **Feature Importance**: Bar chart showing key contributing factors
 5. **Personalized Recommendations**: Tailored advice based on risk level
 
-## 🗂️ Project Structure
+## Project Structure
 
 ```
 CVD_Risk_Prediction/
@@ -125,7 +125,7 @@ CVD_Risk_Prediction/
 └── README.md
 ```
 
-## 🌍 Environmental Data Integration
+## Environmental Data Integration
 
 The application incorporates London-specific environmental factors:
 
@@ -135,7 +135,7 @@ The application incorporates London-specific environmental factors:
 
 Data covers all 33 London boroughs with risk multipliers based on environmental conditions.
 
-## 🧠 Machine Learning Details
+## Machine Learning Details
 
 ### Algorithm: Random Forest Classifier
 
@@ -158,7 +158,7 @@ Data covers all 33 London boroughs with risk multipliers based on environmental 
 - **Split**: 80% training, 20% testing
 - **Validation**: Stratified cross-validation
 
-## 🎯 Future Enhancements
+## Future Enhancements
 
 ### Planned Features
 
@@ -175,7 +175,7 @@ Data covers all 33 London boroughs with risk multipliers based on environmental 
 - **Cloud Deployment**: AWS/Azure hosting with auto-scaling
 - **Mobile Application**: React Native mobile version
 
-## 📚 Research Background
+## Research Background
 
 This project addresses key limitations identified in cardiovascular risk assessment:
 
@@ -184,11 +184,11 @@ This project addresses key limitations identified in cardiovascular risk assessm
 - Machine learning can capture complex, non-linear relationships in health data
 - London's air quality issues make environmental integration particularly relevant
 
-## ⚖️ Medical Disclaimer
+## Medical Disclaimer
 
 **Important**: This application is designed for educational and research purposes only. It should not replace professional medical advice, diagnosis, or treatment. Always consult with qualified healthcare providers for medical decisions.
 
-## 🤝 Contributing
+## Contributing
 
 Contributions are welcome! Please feel free to submit issues and enhancement requests.
 
@@ -200,17 +200,17 @@ Contributions are welcome! Please feel free to submit issues and enhancement req
 4. Add tests if applicable
 5. Submit a pull request
 
-## 📄 License
+## License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
 
-## 👨‍💻 Author
+## Author
 
 **Mircea Serban**
 - GitHub: [@S-Mircea](https://github.com/S-Mircea)
 - Project: Final Year Project - CVD Risk Assessment
 
-## 🙏 Acknowledgments
+## Acknowledgments
 
 - London Air Quality Network for environmental data
 - scikit-learn community for machine learning tools
@@ -219,4 +219,4 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 ---
 
-*Built with ❤️ for better cardiovascular health awareness*
+*Built with love for better cardiovascular health awareness*
