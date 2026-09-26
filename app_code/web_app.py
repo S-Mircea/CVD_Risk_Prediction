@@ -10,7 +10,7 @@ app = Flask(__name__)
 
 # Initialize model
 model = CVDRiskModel()
-if not model.load_model():
+if not model.load_model(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'cvd_risk_model.pkl')):
     print("Warning: Model not found. Please train the model first.")
 
 # Initialize LLM advisor if available

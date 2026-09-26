@@ -1,0 +1,8 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "functions": {
+    "app.py": {
+      "excludeFiles": "{user_data/**,data_collector.py,app_code/gui_app.py,app_code/hybrid_server.py,app_code/simple_web_app.py,app_code/working_app.py,app_code/run_*.py,app_code/test_app.py,app_code/train_model.py,**/__pycache__/**}"
+    }
+  }
+}

@@ -1,0 +1,17 @@
+[project]
+name = "heartscape"
+version = "1.0.0"
+description = "Heartscape: 10-year cardiovascular risk estimates with London borough environmental data"
+# scikit-learn 1.3.2 (required by the saved model) ships wheels up to Python 3.12
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "flask>=3.0",
+    "pandas>=2.1,<3",
+    "numpy>=1.26,<2",
+    "scikit-learn==1.3.2",
+    "joblib>=1.3",
+    "requests>=2.31",
+]
+
+[tool.vercel]
+entrypoint = "app:app"
