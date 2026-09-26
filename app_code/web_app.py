@@ -1,19 +1,15 @@
 import os
-from flask import Flask, render_template, request, jsonify
-import pandas as pd
-from ml_model import CVDRiskModel
-from llm_advisor import CVDLlamaAdvisor
-from borough_info import BOROUGH_RISK, borough_table, grouped_boroughs, load_environment
 import traceback
+
+from flask import Flask, render_template, request, jsonify
+
+from borough_info import BOROUGH_RISK, borough_table, grouped_boroughs, load_environment
+from llm_advisor import CVDLlamaAdvisor
+from risk_engine import assess, cholesterol_to_mg_dl
 
 app = Flask(__name__)
 
-# Initialize model
-model = CVDRiskModel()
-if not model.load_model(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'cvd_risk_model.pkl')):
-    print("Warning: Model not found. Please train the model first.")
-
-# Initialize LLM advisor if available
+# Optional local LLM advice through Ollama; the site works without it
 try:
     llm_advisor = CVDLlamaAdvisor()
     LLM_AVAILABLE = True
@@ -21,37 +17,13 @@ try:
     if ollama_status:
         print("✓ Ollama LLM advisor connected successfully")
     else:
-        print("⚠ Ollama not available - using fallback advice system")
+        print("⚠ Ollama not available - using built-in guidance")
 except Exception as e:
     print(f"⚠ LLM advisor initialization failed: {e}")
     LLM_AVAILABLE = False
     ollama_status = False
 
 ENV_DATA = load_environment()
-
-FEATURE_LABELS = {
-    'Age': ('Age', False), 'SystolicBP': ('Systolic BP', False), 'BMI': ('BMI', False),
-    'HighBloodPressure_encoded': ('High BP diagnosis', False), 'TotalCholesterol': ('Cholesterol', False),
-    'PhysicalActivityLevel_encoded': ('Physical activity', False), 'SleepHours': ('Sleep', False),
-    'DiastolicBP': ('Diastolic BP', False), 'Avg_NO2': ('NO₂', True), 'GreenSpacePercent': ('Green space', True),
-    'Avg_PM25': ('PM2.5', True), 'WalkabilityScore': ('Walkability', True), 'Borough_encoded': ('Borough', True),
-    'Diabetes_encoded': ('Diabetes', False), 'NoiseLevel_dB': ('Noise', True),
-    'UrbanHeatIncrease': ('Urban heat', True), 'Smoker_encoded': ('Smoking', False),
-    'FamilyHistoryCVD_encoded': ('Family history', False), 'AlcoholConsumption_encoded': ('Alcohol', False),
-    'StressLevel_encoded': ('Stress', False), 'Gender_encoded': ('Sex', False),
-}
-
-
-def feature_importances():
-    """The trained model's own feature importances, largest first."""
-    if model.model is None or not hasattr(model.model, 'feature_importances_'):
-        return []
-    pairs = zip(model.data_processor.feature_columns, model.model.feature_importances_)
-    rows = []
-    for name, weight in sorted(pairs, key=lambda p: -p[1]):
-        label, environmental = FEATURE_LABELS.get(name, (name, False))
-        rows.append({'label': label, 'weight': round(float(weight) * 100, 1), 'env': environmental})
-    return rows
 
 
 @app.route('/')
@@ -72,7 +44,7 @@ def index():
 
 @app.route('/how-it-works')
 def how_it_works():
-    return render_template('how.html', active='how', importances=feature_importances())
+    return render_template('how.html', active='how')
 
 
 @app.route('/boroughs')
@@ -85,143 +57,122 @@ def boroughs():
 def about():
     return render_template('about.html', active='about')
 
+
+def personal_recommendations(user, result):
+    """Actions tailored to the answers given, most important first."""
+    recs = []
+    level = result['risk_level']
+    if level in ('High Risk', 'Very High Risk'):
+        recs.append("Book a cardiovascular check with your GP and take this result with you. "
+                    "NICE guidance offers statins from a 10% 10-year risk.")
+    if user['Smoker'] == 'Yes':
+        recs.append("Stopping smoking is the single biggest change you can make; the NHS Quit Smoking service is free.")
+    if user['SystolicBP'] >= 140 or user['DiastolicBP'] >= 90:
+        recs.append("Your blood pressure is in the high range (140/90 or above). Have it rechecked and discuss it with your GP.")
+    elif user['SystolicBP'] >= 130:
+        recs.append("Your blood pressure is slightly raised. Less salt, more activity and less alcohol all help bring it down.")
+    if user['TotalCholesterolMgDl'] >= 240:
+        recs.append("Your total cholesterol is high. A fasting lipid test and diet review are worthwhile.")
+    if user['HDLMgDl'] < 40:
+        recs.append("Your HDL (good) cholesterol is low. Regular aerobic exercise is the most reliable way to raise it.")
+    if user['Diabetes'] == 'Yes':
+        recs.append("Keeping blood sugar in your target range lowers cardiovascular risk; keep up regular diabetes reviews.")
+    if user['PhysicalActivityLevel'] == 'Low':
+        recs.append("Build up to 150 minutes of moderate activity a week; brisk walking counts.")
+    if user['BMI'] >= 30:
+        recs.append("Losing 5–10% of your body weight measurably improves blood pressure and cholesterol.")
+    if user['AlcoholConsumption'] == 'Heavy':
+        recs.append("Keep alcohol under 14 units a week, spread over several days.")
+    if user['SleepHours'] < 6:
+        recs.append("Aim for 7–9 hours of sleep; short sleep is linked to higher blood pressure.")
+    if user['FamilyHistoryCVD'] == 'Yes':
+        recs.append("A family history of heart disease raises risk beyond this estimate. Mention it to your GP.")
+    multiplier = BOROUGH_RISK.get(user['Borough'], (1.0, ''))[0]
+    if multiplier >= 1.10:
+        recs.append("Your borough has higher air pollution: favour quieter streets for walks and check the London Air forecast on high-pollution days.")
+    if not recs:
+        recs.append("Your answers show no major modifiable risk factors. Keep it up and re-check every five years.")
+    return recs
+
+
 @app.route('/assess_risk', methods=['POST'])
 def assess_risk():
     try:
+        f = request.form
         user_data = {
-            'Age': int(request.form['age']),
-            'Gender': request.form['gender'],
-            'Smoker': request.form['smoker'],
-            'FamilyHistoryCVD': request.form['family_history'],
-            'Diabetes': request.form['diabetes'],
-            'HighBloodPressure': request.form['high_bp'],
-            'PhysicalActivityLevel': request.form['activity'],
-            'BMI': float(request.form['bmi']),
-            'TotalCholesterol': float(request.form['cholesterol']),
-            'SystolicBP': float(request.form['systolic_bp']),
-            'DiastolicBP': float(request.form['diastolic_bp']),
-            'AlcoholConsumption': request.form['alcohol'],
-            'StressLevel': request.form['stress'],
-            'SleepHours': float(request.form['sleep_hours']),
-            'Borough': request.form['borough']
+            'Age': int(f['age']),
+            'Gender': f['gender'],
+            'Smoker': f['smoker'],
+            'FamilyHistoryCVD': f['family_history'],
+            'Diabetes': f['diabetes'],
+            'HighBloodPressure': f['high_bp'],
+            'PhysicalActivityLevel': f['activity'],
+            'BMI': float(f['bmi']),
+            'TotalCholesterolMgDl': cholesterol_to_mg_dl(f['cholesterol']),
+            'HDLMgDl': cholesterol_to_mg_dl(f['hdl']) if f.get('hdl') else 50.0,
+            'SystolicBP': float(f['systolic_bp']),
+            'DiastolicBP': float(f['diastolic_bp']),
+            'AlcoholConsumption': f['alcohol'],
+            'StressLevel': f['stress'],
+            'SleepHours': float(f['sleep_hours']),
+            'Borough': f['borough'],
         }
-        
-        env_data = ENV_DATA
-        borough_env = env_data[env_data['Borough'] == user_data['Borough']]
-        
-        if not borough_env.empty:
-            user_data['Avg_PM25'] = borough_env['Avg_PM25'].iloc[0]
-            user_data['Avg_NO2'] = borough_env['Avg_NO2'].iloc[0]
-            user_data['NoiseLevel_dB'] = borough_env['NoiseLevel_dB'].iloc[0]
-            user_data['GreenSpacePercent'] = borough_env['GreenSpacePercent'].iloc[0]
-            user_data['WalkabilityScore'] = borough_env['WalkabilityScore'].iloc[0]
-            user_data['UrbanHeatIncrease'] = borough_env['UrbanHeatIncrease'].iloc[0]
-        else:
-            user_data['Avg_PM25'] = env_data['Avg_PM25'].mean()
-            user_data['Avg_NO2'] = env_data['Avg_NO2'].mean()
-            user_data['NoiseLevel_dB'] = env_data['NoiseLevel_dB'].mean()
-            user_data['GreenSpacePercent'] = env_data['GreenSpacePercent'].mean()
-            user_data['WalkabilityScore'] = env_data['WalkabilityScore'].mean()
-            user_data['UrbanHeatIncrease'] = env_data['UrbanHeatIncrease'].mean()
-        
-        result = model.predict_risk(user_data)
+
+        multiplier = BOROUGH_RISK.get(user_data['Borough'], (1.0, ''))[0]
+        result = assess(
+            age=user_data['Age'],
+            sex=user_data['Gender'],
+            total_chol=user_data['TotalCholesterolMgDl'],
+            hdl=user_data['HDLMgDl'],
+            sbp=user_data['SystolicBP'],
+            bp_treated=user_data['HighBloodPressure'] == 'Yes',
+            smoker=user_data['Smoker'] == 'Yes',
+            diabetic=user_data['Diabetes'] == 'Yes',
+            env_multiplier=multiplier,
+        )
+        result['hdl_assumed'] = not f.get('hdl')
+
+        env_row = ENV_DATA[ENV_DATA['Borough'] == user_data['Borough']]
+        env = env_row.iloc[0] if not env_row.empty else ENV_DATA.mean(numeric_only=True)
         result['environmental_data'] = {
-            'pm25': user_data['Avg_PM25'],
-            'no2': user_data['Avg_NO2'],
             'borough': user_data['Borough'],
-            'green_space': user_data['GreenSpacePercent']
+            'multiplier': multiplier,
+            'pm25': float(env['Avg_PM25']),
+            'no2': float(env['Avg_NO2']),
+            'green_space': float(env['GreenSpacePercent']),
         }
-        result['recommendations'] = get_recommendations(result['risk_level'])
-        
-        # Generate LLM-powered environmental advice
+        result['recommendations'] = personal_recommendations(user_data, result)
+
+        result['llm_advice'] = None
+        result['llm_available'] = False
         if LLM_AVAILABLE and ollama_status:
             try:
-                advice = llm_advisor.get_environmental_advice(
-                    result['risk_level'], result['environmental_data'], user_data
-                )
-                print("Llama advice:", advice)
-                result['llm_advice'] = advice
+                result['llm_advice'] = llm_advisor.get_environmental_advice(
+                    result['risk_level'], result['environmental_data'], user_data)
                 result['llm_available'] = True
             except Exception as e:
                 print("Llama error:", e)
-                traceback.print_exc()
-                advice = "Sorry, no advice available at this time."
-                result['llm_advice'] = advice
-                result['llm_available'] = False
-        else:
-            result['llm_advice'] = None
-            result['llm_available'] = False
-        
-        return jsonify({
-            'success': True,
-            'result': result
-        })
-        
-    except Exception as e:
-        print("Error in assess_risk:", e)
-        traceback.print_exc()
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        }), 400
 
-def get_recommendations(risk_level):
-    recommendations = {
-        'Low Risk': [
-            "Continue your healthy lifestyle",
-            "Schedule regular check-ups",
-            "Monitor environmental exposure",
-            "Maintain current activity levels"
-        ],
-        'Moderate Risk': [
-            "Increase physical activity to 150+ minutes/week",
-            "Consider lifestyle modifications",
-            "Consult with your healthcare provider",
-            "Monitor air quality in your area",
-            "Consider dietary improvements"
-        ],
-        'High Risk': [
-            "Seek immediate medical consultation",
-            "Comprehensive cardiovascular assessment needed",
-            "Urgent lifestyle intervention required",
-            "Consider relocation if air quality is poor",
-            "Regular monitoring and follow-up essential"
-        ]
-    }
-    return recommendations.get(risk_level, ["Consult with healthcare provider"])
+        return jsonify({'success': True, 'result': result})
+
+    except (KeyError, ValueError) as e:
+        return jsonify({'success': False, 'error': f'Please check your answers ({e}).'}), 400
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 
 @app.route('/llm-status', methods=['GET'])
 def llm_status():
     if not LLM_AVAILABLE:
-        return jsonify({
-            'success': True,
-            'status': {
-                'model_name': 'Not Available',
-                'available': False,
-                'ollama_running': False
-            }
-        })
+        return jsonify({'success': True, 'status': {'model_name': 'Not Available', 'available': False,
+                                                    'ollama_running': False}})
     try:
-        model_info = llm_advisor.get_model_info()
-        return jsonify({
-            'success': True,
-            'status': model_info
-        })
+        return jsonify({'success': True, 'status': llm_advisor.get_model_info()})
     except Exception as e:
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        }), 500
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 
 if __name__ == '__main__':
-    print("Starting CVD Risk Assessment application...")
-    print("Server will be available at:")
-    print("- http://127.0.0.1:5002")
-    print("- http://localhost:5002")
-    print("Press Ctrl+C to stop the server")
-    try:
-        app.run(debug=True, host='127.0.0.1', port=5002)
-    except Exception as e:
-        print(f"Error starting server: {e}")
-        print("Trying alternative configuration...")
-        app.run(debug=False, host='localhost', port=5002)
+    print("Starting Heartscape on http://127.0.0.1:5002")
+    app.run(debug=True, host='127.0.0.1', port=5002)

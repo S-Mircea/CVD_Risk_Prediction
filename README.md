@@ -1,6 +1,6 @@
 # Heartscape: CVD Risk Prediction App
 
-A machine learning-powered cardiovascular disease risk assessment application that integrates personal health data with London-specific environmental factors.
+A cardiovascular disease risk web app that combines the validated Framingham risk equation with London-specific environmental factors.
 
 ## Project Overview
 
@@ -8,28 +8,23 @@ This application addresses the limitations of traditional CVD risk calculators (
 
 ### Key Features
 
-- **Advanced ML Prediction**: Random Forest classifier with 93% cross-validation accuracy
-- **Environmental Integration**: London borough-specific air quality and environmental risk factors
-- **Modern Web Interface**: Professional medical-grade UI with animated visualizations
-- **Real-time Risk Assessment**: Instant CVD risk calculation with probability scores
-- **Interactive Visualization**: Animated heart that changes color based on risk level
-- **Feature Importance**: Visual breakdown of key risk factors
+- **Validated base score**: the Framingham general CVD equation (D'Agostino et al., Circulation 2008), checked against its published worked examples
+- **Environmental adjustment**: an illustrative borough multiplier (×0.85–×1.20) applied as a hazard scaling
+- **Explainable results**: percentage points each factor adds, clinical risk bands (<5%, 5–10%, 10–20%, 20%+)
+- **Personal guidance** from all answers, including lifestyle factors the equation leaves out
+- **Borough data explorer** for all 33 London boroughs
 
-## Technology Stack
+## How the Score Works
 
-- **Backend**: Python, Flask
-- **Machine Learning**: scikit-learn, pandas, numpy
-- **Frontend**: HTML5, CSS3, JavaScript
-- **Data Processing**: Custom preprocessing pipeline
-- **Model**: Random Forest Classifier (200 estimators)
+`app_code/risk_engine.py` computes the 10-year risk from age, sex, total and HDL cholesterol (mg/dL or mmol/L),
+systolic blood pressure (treated or untreated), smoking and diabetes, then applies `1 - (1 - risk) ** multiplier`
+for the chosen borough. It is validated for ages 30–74 without existing cardiovascular disease.
 
-## Model Performance
+The earlier Random Forest model (`ml_model.py`, `cvd_risk_model.pkl`) is kept for reference but no longer used:
+its synthetic training data labelled 89% of people, and everyone over 40, as at risk, so it scored almost all
+adults as "Very High Risk".
 
-- **Cross-Validation Accuracy**: 93.0% (±3.8%)
-- **Precision**: 99% for CVD risk prediction
-- **Recall**: 100% for CVD case detection
-- **Training Data**: 1,000 synthetic patient records
-- **Features**: 21 total (15 health + 6 environmental)
+This is an educational tool, not a diagnostic device.
 
 ## Installation & Setup
 

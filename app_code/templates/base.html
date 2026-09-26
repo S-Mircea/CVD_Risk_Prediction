@@ -13,6 +13,12 @@
 </head>
 <body>
     <a class="skip-link" href="#content">Skip to content</a>
+    <div class="demo-banner" role="note">
+        <div class="wrap">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l9.5 17h-19z"/><path d="M12 10v4"/><path d="M12 17.5v.01"/></svg>
+            <p style="margin: 0"><strong>Educational demo, not a medical diagnosis.</strong> Scores use the Framingham risk equation (validated for ages 30–74 in a US population) plus an illustrative London air-quality adjustment. Talk to your GP about your heart health. <a href="{{ url_for('how_it_works') }}">How scores are calculated</a></p>
+        </div>
+    </div>
     <header class="topbar">
         <div class="wrap">
             <a href="{{ url_for('index') }}" class="brand" aria-label="Heartscape home">
@@ -45,7 +51,7 @@
 
     <footer class="footer">
         <div class="wrap">
-            <p><strong>Educational tool, not medical advice.</strong> Estimates come from a Random Forest model trained on 1,000 synthetic records and London-specific environmental research, and may not apply elsewhere. Always talk to a qualified clinician about your cardiovascular health.</p>
+            <p><strong>Educational tool, not medical advice.</strong> Estimates use the Framingham risk equation with an illustrative London environmental adjustment, and may not apply elsewhere. Always talk to a qualified clinician about your cardiovascular health.</p>
             <span class="mono">Heartscape · London</span>
         </div>
     </footer>

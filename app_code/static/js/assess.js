@@ -3,13 +3,15 @@ const boroughRiskData = window.HEARTSCAPE.boroughs;
 const LONDON_AVG = window.HEARTSCAPE.londonAvg;
 const CIRC = 2 * Math.PI * 72;
 
+// Bands follow clinical practice: NICE offers statins from 10% 10-year risk
 const LEVELS = {
-    'Very Low Risk': { tag: 'VERY LOW', headline: 'Very low risk', tone: '#5FBF8F', soft: '#1F3A2D', desc: 'Well below average. Keep doing what you are doing and stay on top of routine check-ups.' },
-    'Low Risk': { tag: 'LOW', headline: 'Low risk', tone: '#5FBF8F', soft: '#1F3A2D', desc: 'Your 10-year risk is low. Continue healthy habits and keep an eye on your environment.' },
-    'Moderate Risk': { tag: 'MODERATE', headline: 'Worth acting on', tone: '#F2A33A', soft: '#3D2F17', desc: 'Your risk is moderate. Lifestyle changes can move this number; discuss it with your GP.' },
-    'High Risk': { tag: 'HIGH', headline: 'Talk to your GP', tone: '#FF7A6E', soft: '#40211F', desc: 'Several markers are elevated together. A clinical review is worthwhile.' },
-    'Very High Risk': { tag: 'VERY HIGH', headline: 'Please seek advice', tone: '#FF7A6E', soft: '#40211F', desc: 'Your estimated risk is high. Book an appointment with a healthcare professional soon.' }
+    'Low Risk': { tag: 'LOW', headline: 'Low risk', tone: '#5FBF8F', soft: '#1F3A2D', desc: 'Under 5% over 10 years. Keep up healthy habits and re-check every few years.' },
+    'Moderate Risk': { tag: 'MODERATE', headline: 'Worth keeping an eye on', tone: '#F2A33A', soft: '#3D2F17', desc: 'Between 5% and 10%. Lifestyle changes can bring this down; mention it at your next check-up.' },
+    'High Risk': { tag: 'HIGH', headline: 'Talk to your GP', tone: '#FF7A6E', soft: '#40211F', desc: 'Between 10% and 20%. At this level NICE guidance suggests discussing treatment such as statins.' },
+    'Very High Risk': { tag: 'VERY HIGH', headline: 'Please seek advice soon', tone: '#FF7A6E', soft: '#40211F', desc: '20% or more over 10 years. Book an appointment with your GP to review your risk factors.' }
 };
+
+const fmtPct = (v) => (v < 10 ? v.toFixed(1) : Math.round(v)) + '%';
 
 const $ = (id) => document.getElementById(id);
 const form = $('assessmentForm');
@@ -83,14 +85,14 @@ function countUp(el, to) {
     const dur = 1200;
     const step = (now) => {
         const t = Math.min((now - start) / dur, 1);
-        el.textContent = Math.round(to * (1 - Math.pow(1 - t, 3))) + '%';
+        el.textContent = fmtPct(to * (1 - Math.pow(1 - t, 3)));
         if (t < 1) requestAnimationFrame(step);
     };
     requestAnimationFrame(step);
 }
 
 function displayResults(result) {
-    const pct = Math.round(result.risk_probability * 100);
+    const pct = result.risk_probability * 100;
     const level = LEVELS[result.risk_level] || LEVELS['Moderate Risk'];
 
     $('resultCard').classList.remove('empty');
@@ -99,7 +101,7 @@ function displayResults(result) {
 
     const arc = $('gauge-arc');
     arc.style.stroke = level.tone;
-    requestAnimationFrame(() => { arc.style.strokeDashoffset = CIRC * (1 - pct / 100); });
+    requestAnimationFrame(() => { arc.style.strokeDashoffset = CIRC * (1 - Math.min(pct, 100) / 100); });
 
     const pill = $('risk-level-pill');
     pill.textContent = level.tag;
@@ -108,39 +110,53 @@ function displayResults(result) {
     $('risk-label').textContent = level.headline;
     $('risk-description').textContent = level.desc;
 
-    updateFactorBars(level.tone);
-    updateEnvironment(result.environmental_data || {});
+    const env = result.environmental_data || {};
+    const envPoints = pct - result.base_risk * 100;
+    const base = $('risk-base');
+    base.textContent = `Framingham ${fmtPct(result.base_risk * 100)} · borough adjustment ${envPoints >= 0 ? '+' : '−'}${Math.abs(envPoints).toFixed(1)} pts`;
+    base.hidden = false;
+
+    const notes = [];
+    if (result.age_note) notes.push(result.age_note);
+    if (result.hdl_assumed) notes.push('No HDL value given, so a typical 50 mg/dL (1.3 mmol/L) was assumed. Adding yours makes the estimate more accurate.');
+    $('risk-note').textContent = notes.join(' ');
+    $('risk-note').hidden = notes.length === 0;
+
+    renderDrivers(result.drivers || [], level.tone);
+    updateEnvironment(env);
     updateAdvice(result);
 }
 
-function updateFactorBars(tone) {
-    const num = (id, fallback) => parseFloat($(id).value) || fallback;
-    const radio = (name) => (form.querySelector(`input[name="${name}"]:checked`) || {}).value;
-    const clamp = (v) => Math.round(Math.min(Math.max(v, 4), 100));
-
-    const multiplier = (boroughRiskData[$('borough').value] || { multiplier: 1 }).multiplier;
-    let life = 20;
-    if (radio('smoker') === 'Yes') life += 35;
-    if (radio('activity') === 'Low') life += 20; else if (radio('activity') === 'High') life -= 10;
-    if (radio('stress') === 'High') life += 15;
-    if ($('alcohol').value === 'Heavy') life += 15;
-    if (num('sleep_hours', 7) < 6) life += 10;
-
-    const values = {
-        age: clamp((num('age', 45) - 30) * 2),
-        bp: clamp((num('systolic_bp', 120) - 110) * 1.5 + (radio('high_bp') === 'Yes' ? 20 : 0)),
-        chol: clamp((num('cholesterol', 200) - 170) * 0.6),
-        env: clamp((multiplier - 0.8) * 200),
-        life: clamp(life)
-    };
-    setTimeout(() => {
-        Object.entries(values).forEach(([key, v]) => {
-            const bar = $(key + '-bar');
-            bar.style.width = v + '%';
-            bar.style.background = v >= 50 ? tone : '#8C8880';
-            $(key + '-val').textContent = v + '%';
-        });
-    }, 150);
+function renderDrivers(drivers, tone) {
+    const box = $('drivers');
+    box.innerHTML = '';
+    const shown = drivers.filter((d) => Math.abs(d.points) >= 0.05).sort((a, b) => b.points - a.points);
+    const max = Math.max(1, ...shown.map((d) => Math.abs(d.points)));
+    if (!shown.length) {
+        const p = document.createElement('p');
+        p.className = 'result-desc';
+        p.textContent = 'None of your answers add measurable risk beyond your age and sex.';
+        box.appendChild(p);
+        return;
+    }
+    shown.forEach((d) => {
+        const row = document.createElement('div');
+        row.className = 'factor';
+        const name = document.createElement('span');
+        name.textContent = d.name;
+        const bar = document.createElement('div');
+        bar.className = 'bar';
+        const fill = document.createElement('i');
+        if (d.points < 0) fill.className = 'neg';
+        else fill.style.background = d.points >= 2 ? tone : '#8C8880';
+        bar.appendChild(fill);
+        const val = document.createElement('span');
+        val.className = 'mono';
+        val.textContent = (d.points > 0 ? '+' : '−') + Math.abs(d.points).toFixed(1);
+        row.append(name, bar, val);
+        box.appendChild(row);
+        setTimeout(() => { fill.style.width = (Math.abs(d.points) / max * 100) + '%'; }, 150);
+    });
 }
 
 function updateEnvironment(env) {
@@ -192,6 +208,9 @@ $('resetBtn').addEventListener('click', () => {
     pill.textContent = 'PENDING'; pill.style.background = ''; pill.style.color = '';
     $('risk-label').textContent = 'Ready when you are';
     $('risk-description').textContent = 'Complete the five short sections and we will estimate your 10-year cardiovascular risk, adjusted for your borough.';
+    $('risk-base').hidden = true;
+    $('risk-note').hidden = true;
+    $('drivers').innerHTML = '';
     $('environmental-info').hidden = true;
     $('advice-panel').hidden = true;
     $('submitLabel').textContent = 'Calculate my risk';

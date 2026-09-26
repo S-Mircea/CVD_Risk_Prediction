@@ -1,78 +1,88 @@
 {% extends "base.html" %}
 {% block title %}How it works · Heartscape{% endblock %}
-{% block description %}How Heartscape turns your health answers and borough environment data into a 10-year cardiovascular risk estimate.{% endblock %}
+{% block description %}How Heartscape calculates a 10-year cardiovascular risk with the Framingham equation and an environmental adjustment for London boroughs.{% endblock %}
 {% block content %}
     <section class="page-hero">
         <span class="eyebrow reveal">How it works</span>
-        <h1 class="reveal d1">From your answers to a 10-year estimate, <em>in four steps.</em></h1>
-        <p class="reveal d2">Heartscape combines what you tell us about your health with measured environmental data for your borough, then asks a trained machine-learning model how similar profiles turned out.</p>
+        <h1 class="reveal d1">A clinical equation, <em>plus where you live.</em></h1>
+        <p class="reveal d2">Your score starts from the Framingham general cardiovascular risk equation, a published and validated calculator doctors have used for years. Heartscape then applies an illustrative adjustment for your borough's environment.</p>
     </section>
 
     <section class="block">
         <div class="steps">
             <article class="card step">
                 <span class="num">01</span>
-                <h3>Tell us about you</h3>
-                <p>Fifteen quick questions: age and sex, blood pressure, cholesterol and BMI, medical history, and a typical week of activity, stress, sleep and alcohol.</p>
+                <h3>You answer</h3>
+                <p>Age, sex, blood pressure, cholesterol, smoking, diabetes and whether you take blood-pressure treatment, plus lifestyle questions and your borough.</p>
             </article>
             <article class="card step">
                 <span class="num">02</span>
-                <h3>Add where you live</h3>
-                <p>Your borough brings in six environmental readings: PM2.5, NO₂, noise, green space, walkability and urban heat.</p>
+                <h3>Framingham base score</h3>
+                <p>Seven clinical factors go into the published equation (D'Agostino et al., 2008), giving your chance of a first heart attack, stroke or other cardiovascular event in 10 years.</p>
             </article>
             <article class="card step">
                 <span class="num">03</span>
-                <h3>The model scores it</h3>
-                <p>All 21 features are scaled and passed to a Random Forest of 200 decision trees. The share of trees voting "at risk" becomes your probability.</p>
+                <h3>Borough adjustment</h3>
+                <p>Your borough's multiplier (×0.85 to ×1.20) scales that risk up or down to reflect air pollution and green space. This step is illustrative, not clinically validated.</p>
             </article>
             <article class="card step">
                 <span class="num">04</span>
-                <h3>You get a clear result</h3>
-                <p>A percentage and risk band, the factors pushing it up, your borough's air-quality profile and practical next steps. With a local Llama model running, you also get written advice.</p>
+                <h3>Result and guidance</h3>
+                <p>You see your risk band, how many percentage points each factor adds, your borough's air quality, and personal next steps based on all of your answers.</p>
             </article>
         </div>
     </section>
 
     <section class="block">
         <div class="block-head">
-            <h2>What the model pays attention to</h2>
-            <p>These are the trained model's own feature importances: how much each input shaped its decisions across all 200 trees.</p>
+            <h2>What goes into the score</h2>
+            <p>Only factors from the validated equation change the number. Everything else shapes your guidance.</p>
         </div>
         <div class="split">
             <div class="card imp">
-                <div class="legend"><span><i></i>Health &amp; lifestyle</span><span><i class="env"></i>Environment</span></div>
-                {% set top = importances[0].weight if importances else 1 %}
-                {% for f in importances %}
-                <div class="imp-row{% if f.env %} env{% endif %}">
-                    <span>{{ f.label }}</span>
-                    <div class="bar"><i style="width: {{ (f.weight / top * 100) | round(1) }}%"></i></div>
-                    <span class="mono">{{ f.weight }}%</span>
-                </div>
-                {% else %}
-                <p class="note">The model file is not loaded, so feature importances are unavailable. Run <code>python3 train_model.py</code> to create it.</p>
-                {% endfor %}
-                {% if importances %}
-                {% set env_total = importances | selectattr('env') | sum(attribute='weight') %}
-                <p class="note">Age dominates at {{ importances[0].weight }}% of the model's decisions. The seven environmental features together account for {{ env_total | round(1) }}%, which is why the same person can score differently in different boroughs.</p>
-                {% endif %}
+                <h3 class="serif" style="margin: 0; font-size: 26px">In the Framingham equation</h3>
+                <ul class="stack-list">
+                    <li><span>Age</span><span>30–74 validated</span></li>
+                    <li><span>Sex</span><span>separate equations</span></li>
+                    <li><span>Total cholesterol</span><span>mg/dL or mmol/L</span></li>
+                    <li><span>HDL cholesterol</span><span>50 mg/dL if unknown</span></li>
+                    <li><span>Systolic blood pressure</span><span>treated or untreated</span></li>
+                    <li><span>Smoking</span><span>yes / no</span></li>
+                    <li><span>Diabetes</span><span>yes / no</span></li>
+                </ul>
+                <h3 class="serif" style="margin: 16px 0 0; font-size: 26px">Used for guidance only</h3>
+                <p class="note">Family history, BMI, physical activity, alcohol, stress and sleep all matter for heart health, but they are not in the Framingham equation, so they don't change your number. Family history in particular can mean your true risk is higher than shown.</p>
+                <p class="note">To check the maths, Heartscape reproduces both worked examples published with the equation exactly: 10.48% for a 61-year-old female smoker and 15.62% for a 53-year-old man with diabetes and treated blood pressure.</p>
             </div>
 
             <div class="dark-card">
                 <h3>Reading your result</h3>
                 <div class="bands">
-                    <div class="band"><b>0–19%</b><span>Very low risk</span></div>
-                    <div class="band"><b>20–39%</b><span>Low risk</span></div>
-                    <div class="band"><b>40–59%</b><span>Moderate risk: worth acting on</span></div>
-                    <div class="band"><b>60–79%</b><span>High risk: talk to your GP</span></div>
-                    <div class="band"><b>80%+</b><span>Very high risk: seek advice soon</span></div>
+                    <div class="band"><b>Under 5%</b><span>Low risk</span></div>
+                    <div class="band"><b>5–10%</b><span>Moderate: keep an eye on it</span></div>
+                    <div class="band"><b>10–20%</b><span>High: NICE suggests discussing statins from 10%</span></div>
+                    <div class="band"><b>20%+</b><span>Very high: see your GP soon</span></div>
                 </div>
                 <div class="facts">
-                    <div class="fact"><b>200</b><span>Decision trees</span></div>
-                    <div class="fact"><b>93%</b><span>Cross-validation accuracy (±3.8%)</span></div>
-                    <div class="fact"><b>1,000</b><span>Synthetic training records</span></div>
-                    <div class="fact"><b>21</b><span>Input features</span></div>
+                    <div class="fact"><b>8,491</b><span>Framingham study participants</span></div>
+                    <div class="fact"><b>30–74</b><span>Validated age range</span></div>
+                    <div class="fact"><b>7</b><span>Clinical factors</span></div>
+                    <div class="fact"><b>×0.85–1.20</b><span>Borough adjustment range</span></div>
                 </div>
+                <p class="result-desc">The borough adjustment scales risk as a hazard: adjusted = 1 − (1 − risk)<sup>multiplier</sup>. For a 10% base risk, the cleanest borough gives about 8.6% and the most polluted about 11.9%.</p>
             </div>
+        </div>
+    </section>
+
+    <section class="block">
+        <div class="block-head">
+            <h2>Know the limits</h2>
+        </div>
+        <div class="steps">
+            <article class="card step"><h3>US population</h3><p>Framingham was developed in a mostly white US population and can overestimate risk for some UK groups. NHS practices use QRISK3, which also covers ethnicity and deprivation.</p></article>
+            <article class="card step"><h3>Existing heart disease</h3><p>The equation is for people without cardiovascular disease. If you have had a heart attack or stroke, your risk is higher and this tool does not apply.</p></article>
+            <article class="card step"><h3>Illustrative environment</h3><p>Borough multipliers reflect published links between pollution and heart disease, but their exact size is our estimate and hasn't been validated.</p></article>
+            <article class="card step"><h3>Not a diagnosis</h3><p>This is an educational estimate. Only a clinician with your full history can assess your risk and advise on treatment.</p></article>
         </div>
     </section>
 

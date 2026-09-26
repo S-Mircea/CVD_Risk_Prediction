@@ -14,20 +14,20 @@
             <p>Established risk calculators such as Framingham and QRISK are built on clinical and lifestyle markers. They leave out the environment people live in every day, even though air pollution, noise and access to green space are linked to heart disease.</p>
             <p>London makes this easy to see: NO₂ levels in some central boroughs are more than double those in leafy outer boroughs. Heartscape adds these borough-level readings to the usual health questions, so your estimate reflects your surroundings as well as your vitals.</p>
 
-            <h2>Where the data comes from</h2>
+            <h2>How the score is calculated</h2>
             <ul>
-                <li><strong>Environmental data:</strong> average PM2.5, NO₂, noise, green space, walkability and urban heat for all 33 London boroughs.</li>
-                <li><strong>Training data:</strong> 1,000 synthetic patient records that combine health markers with those borough readings.</li>
-                <li><strong>Model:</strong> a Random Forest classifier with 200 trees, reaching 93% (±3.8%) cross-validation accuracy on that synthetic data.</li>
+                <li><strong>Base risk:</strong> the Framingham general cardiovascular risk equation (D'Agostino et al., <em>Circulation</em>, 2008), built from 8,491 participants of the Framingham Heart Study.</li>
+                <li><strong>Environmental adjustment:</strong> a multiplier from ×0.85 to ×1.20 for each of the 33 London boroughs, based on average PM2.5, NO₂, noise, green space, walkability and urban heat.</li>
             </ul>
+            <p>Earlier versions of Heartscape used a machine-learning model trained on 1,000 synthetic records. Testing showed it labelled almost everyone over 40 as very high risk, so we replaced it with the validated equation. See <a href="{{ url_for('how_it_works') }}">How it works</a> for the details.</p>
 
             <h2>What it can't tell you</h2>
-            <p>Heartscape is not a diagnostic tool, and its results have not been clinically validated. Keep these limits in mind:</p>
+            <p>Heartscape is not a diagnostic tool. Keep these limits in mind:</p>
             <ul>
-                <li>The model learned from synthetic records, so its accuracy on real people is unknown.</li>
-                <li>Age drives more than half of the model's decisions, and estimates can run high for otherwise ordinary profiles.</li>
-                <li>Environmental readings are borough averages; your street may be cleaner or busier than your borough as a whole.</li>
-                <li>It only covers London. Outside London, the environmental part of the estimate does not apply.</li>
+                <li>Framingham was developed in a US population and can overestimate risk for some UK groups. GPs in England use QRISK3.</li>
+                <li>It's validated for ages 30–74 and for people without existing heart disease.</li>
+                <li>Family history, weight and lifestyle shape your guidance but aren't in the equation, so your true risk may differ.</li>
+                <li>The borough adjustment is illustrative: pollution affects heart health, but the exact size of the effect here is our estimate.</li>
             </ul>
 
             <h2>Your privacy</h2>
@@ -43,15 +43,15 @@
                 <h3>Built with</h3>
                 <ul class="stack-list">
                     <li><span>Backend</span><span>Python · Flask</span></li>
-                    <li><span>Model</span><span>scikit-learn</span></li>
-                    <li><span>Data</span><span>pandas · NumPy</span></li>
+                    <li><span>Risk score</span><span>Framingham 2008</span></li>
+                    <li><span>Data</span><span>pandas</span></li>
                     <li><span>Advice</span><span>Llama via Ollama</span></li>
                     <li><span>Frontend</span><span>HTML · CSS · JS</span></li>
                 </ul>
             </div>
             <div class="card panel">
                 <h3>Open source</h3>
-                <p>The code, data and model are on GitHub. Issues and contributions are welcome.</p>
+                <p>The code and data are on GitHub. Issues and contributions are welcome.</p>
                 <a class="use-link" href="https://github.com/S-Mircea/CVD_Risk_Prediction" rel="noopener">View the repository →</a>
             </div>
         </aside>
