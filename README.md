@@ -1,4 +1,4 @@
-# CVD Risk Prediction App
+# Heartscape: CVD Risk Prediction App
 
 A machine learning-powered cardiovascular disease risk assessment application that integrates personal health data with London-specific environmental factors.
 
@@ -108,7 +108,13 @@ After submitting the form, the application provides:
 CVD_Risk_Prediction/
 ├── app_code/
 │   ├── templates/
-│   │   └── index.html          # Main web interface
+│   │   ├── base.html           # Shared layout: header, navigation, footer
+│   │   ├── index.html          # Risk assessment form and results
+│   │   ├── how.html            # How it works, with live model feature importances
+│   │   ├── boroughs.html       # Sortable environmental data for all 33 boroughs
+│   │   └── about.html          # Background, limitations and privacy
+│   ├── static/                 # app.css, assess.js, boroughs.js
+│   ├── borough_info.py         # Borough risk multipliers and table helpers
 │   ├── web_app.py              # Flask application
 │   ├── ml_model.py             # Machine learning model class
 │   ├── data_processor.py       # Data preprocessing utilities

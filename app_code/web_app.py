@@ -3,6 +3,7 @@ from flask import Flask, render_template, request, jsonify
 import pandas as pd
 from ml_model import CVDRiskModel
 from llm_advisor import CVDLlamaAdvisor
+from borough_info import BOROUGH_RISK, borough_table, grouped_boroughs, load_environment
 import traceback
 
 app = Flask(__name__)
@@ -26,9 +27,63 @@ except Exception as e:
     LLM_AVAILABLE = False
     ollama_status = False
 
+ENV_DATA = load_environment()
+
+FEATURE_LABELS = {
+    'Age': ('Age', False), 'SystolicBP': ('Systolic BP', False), 'BMI': ('BMI', False),
+    'HighBloodPressure_encoded': ('High BP diagnosis', False), 'TotalCholesterol': ('Cholesterol', False),
+    'PhysicalActivityLevel_encoded': ('Physical activity', False), 'SleepHours': ('Sleep', False),
+    'DiastolicBP': ('Diastolic BP', False), 'Avg_NO2': ('NO₂', True), 'GreenSpacePercent': ('Green space', True),
+    'Avg_PM25': ('PM2.5', True), 'WalkabilityScore': ('Walkability', True), 'Borough_encoded': ('Borough', True),
+    'Diabetes_encoded': ('Diabetes', False), 'NoiseLevel_dB': ('Noise', True),
+    'UrbanHeatIncrease': ('Urban heat', True), 'Smoker_encoded': ('Smoking', False),
+    'FamilyHistoryCVD_encoded': ('Family history', False), 'AlcoholConsumption_encoded': ('Alcohol', False),
+    'StressLevel_encoded': ('Stress', False), 'Gender_encoded': ('Sex', False),
+}
+
+
+def feature_importances():
+    """The trained model's own feature importances, largest first."""
+    if model.model is None or not hasattr(model.model, 'feature_importances_'):
+        return []
+    pairs = zip(model.data_processor.feature_columns, model.model.feature_importances_)
+    rows = []
+    for name, weight in sorted(pairs, key=lambda p: -p[1]):
+        label, environmental = FEATURE_LABELS.get(name, (name, False))
+        rows.append({'label': label, 'weight': round(float(weight) * 100, 1), 'env': environmental})
+    return rows
+
+
 @app.route('/')
 def index():
-    return render_template('index.html')
+    selected = request.args.get('borough', '')
+    if selected not in BOROUGH_RISK:
+        selected = ''
+    return render_template(
+        'index.html',
+        active='assess',
+        borough_groups=grouped_boroughs(),
+        selected_borough=selected,
+        borough_risk={name: {'multiplier': m, 'description': d} for name, (m, d) in BOROUGH_RISK.items()},
+        london_avg={'pm25': round(float(ENV_DATA['Avg_PM25'].mean()), 1),
+                    'no2': round(float(ENV_DATA['Avg_NO2'].mean()), 1)},
+    )
+
+
+@app.route('/how-it-works')
+def how_it_works():
+    return render_template('how.html', active='how', importances=feature_importances())
+
+
+@app.route('/boroughs')
+def boroughs():
+    rows = borough_table(ENV_DATA)
+    return render_template('boroughs.html', active='boroughs', boroughs=rows)
+
+
+@app.route('/about')
+def about():
+    return render_template('about.html', active='about')
 
 @app.route('/assess_risk', methods=['POST'])
 def assess_risk():
@@ -51,9 +106,7 @@ def assess_risk():
             'Borough': request.form['borough']
         }
         
-        script_dir = os.path.dirname(os.path.realpath(__file__))
-        env_data_path = os.path.join(script_dir, '..', 'environmental_data', 'expanded_environmental_data.csv')
-        env_data = pd.read_csv(env_data_path)
+        env_data = ENV_DATA
         borough_env = env_data[env_data['Borough'] == user_data['Borough']]
         
         if not borough_env.empty:

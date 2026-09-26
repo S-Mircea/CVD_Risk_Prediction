@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block title %}About · Heartscape{% endblock %}
+{% block description %}Why Heartscape exists, where its data comes from, and what it can and cannot tell you.{% endblock %}
+{% block content %}
+    <section class="page-hero">
+        <span class="eyebrow reveal">About Heartscape</span>
+        <h1 class="reveal d1">Heart health doesn't stop <em>at your front door.</em></h1>
+        <p class="reveal d2">Heartscape is a research and education project exploring how the place you live, not just your body, shapes your cardiovascular risk.</p>
+    </section>
+
+    <section class="block prose-grid">
+        <article class="card prose">
+            <h2>Why we built it</h2>
+            <p>Established risk calculators such as Framingham and QRISK are built on clinical and lifestyle markers. They leave out the environment people live in every day, even though air pollution, noise and access to green space are linked to heart disease.</p>
+            <p>London makes this easy to see: NO₂ levels in some central boroughs are more than double those in leafy outer boroughs. Heartscape adds these borough-level readings to the usual health questions, so your estimate reflects your surroundings as well as your vitals.</p>
+
+            <h2>Where the data comes from</h2>
+            <ul>
+                <li><strong>Environmental data:</strong> average PM2.5, NO₂, noise, green space, walkability and urban heat for all 33 London boroughs.</li>
+                <li><strong>Training data:</strong> 1,000 synthetic patient records that combine health markers with those borough readings.</li>
+                <li><strong>Model:</strong> a Random Forest classifier with 200 trees, reaching 93% (±3.8%) cross-validation accuracy on that synthetic data.</li>
+            </ul>
+
+            <h2>What it can't tell you</h2>
+            <p>Heartscape is not a diagnostic tool, and its results have not been clinically validated. Keep these limits in mind:</p>
+            <ul>
+                <li>The model learned from synthetic records, so its accuracy on real people is unknown.</li>
+                <li>Age drives more than half of the model's decisions, and estimates can run high for otherwise ordinary profiles.</li>
+                <li>Environmental readings are borough averages; your street may be cleaner or busier than your borough as a whole.</li>
+                <li>It only covers London. Outside London, the environmental part of the estimate does not apply.</li>
+            </ul>
+
+            <h2>Your privacy</h2>
+            <p>Your answers are sent to the Heartscape server for a single calculation and are not saved to any database. Written advice, when enabled, comes from a Llama model running locally through Ollama, not from a third-party service.</p>
+        </article>
+
+        <aside class="side">
+            <div class="card panel warn-card">
+                <h3>In an emergency</h3>
+                <p>If you have chest pain, shortness of breath or other signs of a heart attack or stroke, call 999 now. For non-urgent advice, contact your GP or NHS 111.</p>
+            </div>
+            <div class="card panel">
+                <h3>Built with</h3>
+                <ul class="stack-list">
+                    <li><span>Backend</span><span>Python · Flask</span></li>
+                    <li><span>Model</span><span>scikit-learn</span></li>
+                    <li><span>Data</span><span>pandas · NumPy</span></li>
+                    <li><span>Advice</span><span>Llama via Ollama</span></li>
+                    <li><span>Frontend</span><span>HTML · CSS · JS</span></li>
+                </ul>
+            </div>
+            <div class="card panel">
+                <h3>Open source</h3>
+                <p>The code, data and model are on GitHub. Issues and contributions are welcome.</p>
+                <a class="use-link" href="https://github.com/S-Mircea/CVD_Risk_Prediction" rel="noopener">View the repository →</a>
+            </div>
+        </aside>
+    </section>
+
+    <section class="cta-band">
+        <h2>See how your health and your borough add up.</h2>
+        <a class="btn-primary" href="{{ url_for('index') }}#assess">Check my risk
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M13 6l6 6-6 6"/></svg>
+        </a>
+    </section>
+{% endblock %}

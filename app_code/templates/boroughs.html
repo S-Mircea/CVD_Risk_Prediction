@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% block title %}Borough data · Heartscape{% endblock %}
+{% block description %}Air quality, noise, green space and cardiovascular risk multipliers for all 33 London boroughs.{% endblock %}
+{% block content %}
+    {% set n = boroughs | length %}
+    {% set avg_pm25 = (boroughs | sum(attribute='pm25')) / n %}
+    {% set avg_no2 = (boroughs | sum(attribute='no2')) / n %}
+    {% set cleanest = boroughs | sort(attribute='pm25') | first %}
+    {% set worst_no2 = boroughs | sort(attribute='no2', reverse=true) | first %}
+    {% set greenest = boroughs | sort(attribute='green', reverse=true) | first %}
+
+    <section class="page-hero">
+        <span class="eyebrow reveal">Borough data</span>
+        <h1 class="reveal d1">Where you live <em>shapes your heart.</em></h1>
+        <p class="reveal d2">The environmental readings Heartscape uses for each of London's {{ n }} boroughs. Sort any column, filter by exposure, or start an assessment with a borough already selected.</p>
+    </section>
+
+    <section class="block">
+        <div class="stats reveal d3" style="margin-bottom: 40px">
+            <div class="stat"><b>{{ cleanest.pm25 }}</b><span>Lowest PM2.5 · {{ cleanest.name }}</span></div>
+            <div class="stat"><b>{{ worst_no2.no2 }}</b><span>Highest NO₂ · {{ worst_no2.name }}</span></div>
+            <div class="stat"><b>{{ greenest.green }}%</b><span>Most green space · {{ greenest.name }}</span></div>
+        </div>
+
+        <div class="toolbar">
+            <label class="search">
+                <span class="sr-only">Search boroughs</span>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+                <input class="input" type="search" id="boroughSearch" placeholder="Search boroughs" autocomplete="off">
+            </label>
+            <div class="filters" role="group" aria-label="Filter by exposure">
+                <button type="button" data-tier="all" aria-pressed="true">All</button>
+                <button type="button" data-tier="high" aria-pressed="false">Higher</button>
+                <button type="button" data-tier="medium" aria-pressed="false">Medium</button>
+                <button type="button" data-tier="low" aria-pressed="false">Lower</button>
+            </div>
+            <span class="count" id="boroughCount" aria-live="polite">{{ n }} boroughs</span>
+        </div>
+
+        <div class="card table-wrap">
+            <table class="data" id="boroughTable">
+                <caption class="sr-only">Environmental readings by London borough. Column headers sort the table.</caption>
+                <thead>
+                    <tr>
+                        <th data-key="name" data-type="text"><button type="button">Borough <span class="arrow" aria-hidden="true">▲</span></button></th>
+                        <th data-key="multiplier" class="num" aria-sort="descending"><button type="button">Risk multiplier <span class="arrow" aria-hidden="true">▼</span></button></th>
+                        <th data-key="pm25" class="num"><button type="button">PM2.5 µg/m³ <span class="arrow" aria-hidden="true">▼</span></button></th>
+                        <th data-key="no2"><button type="button">NO₂ µg/m³ <span class="arrow" aria-hidden="true">▼</span></button></th>
+                        <th data-key="noise" class="num"><button type="button">Noise dB <span class="arrow" aria-hidden="true">▼</span></button></th>
+                        <th data-key="green" class="num"><button type="button">Green space % <span class="arrow" aria-hidden="true">▼</span></button></th>
+                        <th data-key="walk" class="num"><button type="button">Walkability <span class="arrow" aria-hidden="true">▼</span></button></th>
+                        <th data-key="heat" class="num"><button type="button">Urban heat °C <span class="arrow" aria-hidden="true">▼</span></button></th>
+                        <th><span class="sr-only">Action</span></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for b in boroughs %}
+                    <tr data-name="{{ b.name }}" data-tier="{{ b.tier }}" data-multiplier="{{ b.multiplier }}" data-pm25="{{ b.pm25 }}" data-no2="{{ b.no2 }}" data-noise="{{ b.noise }}" data-green="{{ b.green }}" data-walk="{{ b.walk }}" data-heat="{{ b.heat }}">
+                        <td class="name" title="{{ b.description }}">{{ b.name }}</td>
+                        <td class="num"><span class="chip {{ b.tier }}">×{{ '%.2f' | format(b.multiplier) }}</span></td>
+                        <td class="num{% if b.pm25 > avg_pm25 %} hi{% endif %}">{{ b.pm25 }}</td>
+                        <td><span class="cell-bar"><span class="bar"><i style="width: {{ (b.no2 / worst_no2.no2 * 100) | round(1) }}%"></i></span><span class="mono{% if b.no2 > avg_no2 %} hi{% endif %}">{{ b.no2 }}</span></span></td>
+                        <td class="num">{{ b.noise }}</td>
+                        <td class="num">{{ b.green }}</td>
+                        <td class="num">{{ b.walk }}</td>
+                        <td class="num">+{{ b.heat }}</td>
+                        <td><a class="use-link" href="{{ url_for('index', borough=b.name) }}#assess" aria-label="Check my risk in {{ b.name }}">Check risk →</a></td>
+                    </tr>
+                    {% endfor %}
+                    <tr class="empty-row" hidden><td colspan="9">No boroughs match your search.</td></tr>
+                </tbody>
+            </table>
+        </div>
+        <p class="note" style="margin-top: 16px">Red values are above the London average (PM2.5 {{ avg_pm25 | round(1) }} µg/m³, NO₂ {{ avg_no2 | round(1) }} µg/m³). The risk multiplier reflects each borough's pollution, green space and cardiovascular mortality profile; hover a borough name for a summary.</p>
+    </section>
+{% endblock %}
+{% block scripts %}
+    <script src="{{ url_for('static', filename='js/boroughs.js') }}"></script>
+{% endblock %}

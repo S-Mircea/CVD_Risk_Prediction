@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% block title %}How it works · Heartscape{% endblock %}
+{% block description %}How Heartscape turns your health answers and borough environment data into a 10-year cardiovascular risk estimate.{% endblock %}
+{% block content %}
+    <section class="page-hero">
+        <span class="eyebrow reveal">How it works</span>
+        <h1 class="reveal d1">From your answers to a 10-year estimate, <em>in four steps.</em></h1>
+        <p class="reveal d2">Heartscape combines what you tell us about your health with measured environmental data for your borough, then asks a trained machine-learning model how similar profiles turned out.</p>
+    </section>
+
+    <section class="block">
+        <div class="steps">
+            <article class="card step">
+                <span class="num">01</span>
+                <h3>Tell us about you</h3>
+                <p>Fifteen quick questions: age and sex, blood pressure, cholesterol and BMI, medical history, and a typical week of activity, stress, sleep and alcohol.</p>
+            </article>
+            <article class="card step">
+                <span class="num">02</span>
+                <h3>Add where you live</h3>
+                <p>Your borough brings in six environmental readings: PM2.5, NO₂, noise, green space, walkability and urban heat.</p>
+            </article>
+            <article class="card step">
+                <span class="num">03</span>
+                <h3>The model scores it</h3>
+                <p>All 21 features are scaled and passed to a Random Forest of 200 decision trees. The share of trees voting "at risk" becomes your probability.</p>
+            </article>
+            <article class="card step">
+                <span class="num">04</span>
+                <h3>You get a clear result</h3>
+                <p>A percentage and risk band, the factors pushing it up, your borough's air-quality profile and practical next steps. With a local Llama model running, you also get written advice.</p>
+            </article>
+        </div>
+    </section>
+
+    <section class="block">
+        <div class="block-head">
+            <h2>What the model pays attention to</h2>
+            <p>These are the trained model's own feature importances: how much each input shaped its decisions across all 200 trees.</p>
+        </div>
+        <div class="split">
+            <div class="card imp">
+                <div class="legend"><span><i></i>Health &amp; lifestyle</span><span><i class="env"></i>Environment</span></div>
+                {% set top = importances[0].weight if importances else 1 %}
+                {% for f in importances %}
+                <div class="imp-row{% if f.env %} env{% endif %}">
+                    <span>{{ f.label }}</span>
+                    <div class="bar"><i style="width: {{ (f.weight / top * 100) | round(1) }}%"></i></div>
+                    <span class="mono">{{ f.weight }}%</span>
+                </div>
+                {% else %}
+                <p class="note">The model file is not loaded, so feature importances are unavailable. Run <code>python3 train_model.py</code> to create it.</p>
+                {% endfor %}
+                {% if importances %}
+                {% set env_total = importances | selectattr('env') | sum(attribute='weight') %}
+                <p class="note">Age dominates at {{ importances[0].weight }}% of the model's decisions. The seven environmental features together account for {{ env_total | round(1) }}%, which is why the same person can score differently in different boroughs.</p>
+                {% endif %}
+            </div>
+
+            <div class="dark-card">
+                <h3>Reading your result</h3>
+                <div class="bands">
+                    <div class="band"><b>0–19%</b><span>Very low risk</span></div>
+                    <div class="band"><b>20–39%</b><span>Low risk</span></div>
+                    <div class="band"><b>40–59%</b><span>Moderate risk: worth acting on</span></div>
+                    <div class="band"><b>60–79%</b><span>High risk: talk to your GP</span></div>
+                    <div class="band"><b>80%+</b><span>Very high risk: seek advice soon</span></div>
+                </div>
+                <div class="facts">
+                    <div class="fact"><b>200</b><span>Decision trees</span></div>
+                    <div class="fact"><b>93%</b><span>Cross-validation accuracy (±3.8%)</span></div>
+                    <div class="fact"><b>1,000</b><span>Synthetic training records</span></div>
+                    <div class="fact"><b>21</b><span>Input features</span></div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="cta-band">
+        <h2>Ready to see your own number? It takes about two minutes.</h2>
+        <a class="btn-primary" href="{{ url_for('index') }}#assess">Start the assessment
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M13 6l6 6-6 6"/></svg>
+        </a>
+    </section>
+{% endblock %}
