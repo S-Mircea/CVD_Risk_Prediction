@@ -75,7 +75,8 @@ def assess_risk():
         result['environmental_data'] = {
             'pm25': user_data['Avg_PM25'],
             'no2': user_data['Avg_NO2'],
-            'borough': user_data['Borough']
+            'borough': user_data['Borough'],
+            'green_space': user_data['GreenSpacePercent']
         }
         result['recommendations'] = get_recommendations(result['risk_level'])
         
